@@ -7,11 +7,11 @@ Created on Thu Jun 11 17:33:05 2015
 
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
+#import cv2
 
 a=np.arange(1,11)
 b=a*a
-plt.figure()
+plt.figure(1)
 plt.subplot(221)
 plt.plot(a,b)
 
@@ -52,11 +52,10 @@ plt.legend()
 plt.savefig('Example1.eps')
 
 r=np.sin(2*theta)
-plt.figure()
 plt.polar(r,theta)
 
 plt.savefig('Example2.eps')
 
-img = cv2.imread('IMG_1810.jpg')
+img = plt.imread('WIN_20150828_18_38_20_Pro.jpg')
 plt.figure(3)
 plt.imshow(img)

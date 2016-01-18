@@ -52,6 +52,7 @@ plt.legend()
 plt.savefig('Example1.eps')
 
 r=np.sin(2*theta)
+plt.figure(2)
 plt.polar(r,theta)
 
 plt.savefig('Example2.eps')

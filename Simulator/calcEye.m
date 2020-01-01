@@ -25,7 +25,7 @@ C2Led = normalize2unit(eye.Led' - C'); % cornea to led unit vector
 C2Cam = normalize2unit(eye.Cam' - C'); % cornea to camera unit vector
 eye.glint = zeros(size(C2Cam));
 for ii = 1:size(C2Led,2) % Half angle (glint) calculations
-    halfAng = mean([C2Led(:,ii) C2Cam],2); % for unit vectors half hangle is mean
+    halfAng = mean([C2Led(:,ii) C2Cam],2); % for unit vectors half angle is mean
     eye.glint(:, ii) = C' + CorneaRadius * normalize2unit(halfAng); % the glint point on cornea
 end
 %% contours
@@ -56,3 +56,4 @@ eye.Ppixel = get_e1_e2_angle_arcmin(P0'-eye.Cam', P'-eye.Cam') / optic_resolutio
 eye.Gpixel(1) = get_e1_e2_angle_arcmin(P0'-eye.Cam', eye.glint(:,1)-eye.Cam') / optic_resolution;
 eye.Gpixel(2) = get_e1_e2_angle_arcmin(P0'-eye.Cam', eye.glint(:,2)-eye.Cam') / optic_resolution;
 eye.Gpixel(3) = get_e1_e2_angle_arcmin(P0'-eye.Cam', eye.glint(:,3)-eye.Cam') / optic_resolution;
+

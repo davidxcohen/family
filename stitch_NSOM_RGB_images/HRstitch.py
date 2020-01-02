@@ -7,11 +7,11 @@ import imutils
 import cv2
 from HRtranslationRowStitch import Stitcher
 import numpy as np
+
+
 from scipy import signal
 
-# import PIL
-
-Path = "C:\\Users\\ayele\\Documents\\Ayelet\\Technion\\python\\my code\\images\\high_resolution\\"
+Path = "images/high_resolution/"
 tip_length = 0
 
 
@@ -74,8 +74,8 @@ def read_images(paths):
 
 if __name__ == "__main__":
     # calc_mean()
-    # paths = [Path + "h (1).png", Path + "h (2).png", Path + "h (3).png"]
-    paths = [Path + "i (0).png", Path + "i (1).png", Path + "i (2).png"]
+    paths = [Path + "h (1).png", Path + "h (2).png", Path + "h (3).png"]
+    # paths = [Path + "i (0).png", Path + "i (1).png", Path + "i (2).png"]
     # paths = [Path + "i2.png", Path + "i3.png"]
     # paths = [Path + "g5.png", Path + "g6.png"]
     # paths = [Path + "g2.png", Path + "g3.png", Path + "g4.png"]
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     #
 
     # highpass check
-    # img = cv2.imread(Path + "mean_s%d\\" % sample_num + "im (1).png")
+    # img = cv2.imread(Path + "mean_s%d/" % sample_num + "im (1).png")
     # highpass = highpass(cut_tip(img))
     # cv2.imshow("highpass", highpass)
     # cv2.waitKey(0)

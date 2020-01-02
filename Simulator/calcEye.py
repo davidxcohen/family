@@ -1,9 +1,10 @@
 import numpy as np
 import numpy.linalg
-import math
 import numpy.matlib
 import matplotlib.pyplot as plt
-plt.style.use('dark_background')
+from matplotlib.widgets import Slider, Button, RadioButtons
+
+# plt.style.use('dark_background')
 # plt.style.use('seaborn-dark-palette')
 
 
@@ -35,7 +36,7 @@ def normalize_rows(x: np.ndarray):
 
 def calcEye(gaze=5.):
     # Eye Constants
-    gazeRAD = np.radians(gaze)
+    gazeRAD = [np.radians(gaze), 0]
     EBC2CorneaApex = 13.5  # [mm]
     P2CorneaApex = 3.5  # [mm]
     EBradius = 12.0  # [mm]
@@ -117,39 +118,83 @@ def calcEye(gaze=5.):
 
 
 def plotEye(eye):
-    plt.figure()
-    plt.plot(eye['Ccontour'].T[0], eye['Ccontour'].T[1], 'b', linewidth=2, markersize=12)
-    plt.plot(eye['Ccontour_model'].T[0], eye['Ccontour_model'].T[1], ':b', linewidth=2, markersize=12)  # continue the
+    # fig, ax = plt.subplots()
+    # plt.subplots_adjust(bottom=0.25)  # leave space for the slider
+    # plt.figure()
+    ax.plot(eye['Ccontour'].T[0], eye['Ccontour'].T[1], 'b', linewidth=2, markersize=12)
+    ax.plot(eye['Ccontour_model'].T[0], eye['Ccontour_model'].T[1], ':b', linewidth=2, markersize=12)  # continue the
                                                                                     # cornea with dotted line
-    plt.plot(eye['EBcontour'].T[0], eye['EBcontour'].T[1], 'b', linewidth=2, markersize=12)
-    plt.plot(eye['limbus'].T[0][0:2], eye['limbus'].T[1][0:2], 'b', linewidth=2, markersize=12)  # Bottom limbus
-    plt.plot(eye['limbus'].T[0][2:4], eye['limbus'].T[1][2:4], 'b', linewidth=2, markersize=12)  # top limbus
-    plt.plot(eye['Pcontour'].T[0][0:2], eye['Pcontour'].T[1][0:2], 'c', linewidth=4, markersize=12)
-    plt.plot(eye['Pcontour'].T[0][2:4], eye['Pcontour'].T[1][2:4], 'c', linewidth=4, markersize=12)
-    plt.plot(eye['Eyepiece'].T[0]  , eye['Eyepiece'].T[1], 'g', linewidth=4, markersize=12)
-    plt.plot(eye['Eyepiece'].T[0] - 1.0, eye['Eyepiece'].T[1], 'r', linewidth=4, markersize=12)
-    plt.plot(eye['Eyepiece'].T[0] - 0.5, eye['Eyepiece'].T[1], 'b', linewidth=4, markersize=12)
-    plt.plot(eye['Led'].T[0], eye['Led'].T[1], 'ro', linewidth=2, markersize=12)
-    plt.plot(eye['Led'].T[0]+1.0, eye['Led'].T[1], 'rs', linewidth=2, markersize=12)
-    plt.plot(eye['pupil'][0], eye['pupil'][1], 'ob', linewidth=2, markersize=12)
-    plt.text(eye['pupil'][0], eye['pupil'][1], 'P')
-    plt.plot(eye['cornea'][0], eye['cornea'][1], 'ob', linewidth=2, markersize=12)
-    plt.text(eye['cornea'][0], eye['cornea'][1], 'C')
-    plt.plot(eye['EBC'][0], eye['EBC'][1], 'ob', linewidth=2, markersize=12)
-    plt.text(eye['EBC'][0], eye['EBC'][1], 'EBC')
-    plt.plot(eye['Cam'][0], eye['Cam'][1], '>m', linewidth=2, markersize=12)
-    plt.plot(eye['Cam'][0]+1.0, eye['Cam'][1], 'sm', linewidth=2, markersize=12)
+    ax.plot(eye['EBcontour'].T[0], eye['EBcontour'].T[1], 'b', linewidth=2, markersize=12)
+    ax.plot(eye['limbus'].T[0][0:2], eye['limbus'].T[1][0:2], 'g', linewidth=2, markersize=12)  # Bottom limbus
+    ax.plot(eye['limbus'].T[0][2:4], eye['limbus'].T[1][2:4], 'g', linewidth=2, markersize=12)  # top limbus
+    ax.plot(eye['Pcontour'].T[0][0:2], eye['Pcontour'].T[1][0:2], 'c', linewidth=4, markersize=12)
+    ax.plot(eye['Pcontour'].T[0][2:4], eye['Pcontour'].T[1][2:4], 'c', linewidth=4, markersize=12)
+    ax.plot(eye['Eyepiece'].T[0]  , eye['Eyepiece'].T[1], 'g', linewidth=4, markersize=12)
+    ax.plot(eye['Eyepiece'].T[0] - 1.0, eye['Eyepiece'].T[1], 'r', linewidth=4, markersize=12)
+    ax.plot(eye['Eyepiece'].T[0] - 0.5, eye['Eyepiece'].T[1], 'b', linewidth=4, markersize=12)
+    ax.plot(eye['Led'].T[0], eye['Led'].T[1], 'ro', linewidth=2, markersize=12)
+    ax.plot(eye['Led'].T[0]+1.0, eye['Led'].T[1], 'rs', linewidth=2, markersize=12)
+    ax.plot(eye['pupil'][0], eye['pupil'][1], 'ob', linewidth=2, markersize=12)
+    ax.text(eye['pupil'][0], eye['pupil'][1], 'P')
+    ax.plot(eye['cornea'][0], eye['cornea'][1], 'ob', linewidth=2, markersize=12)
+    ax.text(eye['cornea'][0], eye['cornea'][1], 'C')
+    ax.plot(eye['EBC'][0], eye['EBC'][1], 'ob', linewidth=2, markersize=12)
+    ax.text(eye['EBC'][0], eye['EBC'][1], 'EBC')
+    ax.plot(eye['Cam'][0], eye['Cam'][1], '>m', linewidth=2, markersize=12)
+    ax.plot(eye['Cam'][0]+1.0, eye['Cam'][1], 'sm', linewidth=2, markersize=12)
     plt.text(eye['Cam'][0], eye['Cam'][1], 'Cam')
     for i in range(np.shape(eye['glint_beam'])[1]):
-        plt.plot(eye['glint_beam'][:, i, 0], eye['glint_beam'][:, i, 1], ':r', linewidth=1, markersize=12)
-    plt.axis('equal')
-    plt.grid('on', color='gray', linewidth=0.5)
-    plt.show()
+        ax.plot(eye['glint_beam'][:, i, 0], eye['glint_beam'][:, i, 1], ':r', linewidth=1, markersize=12)
+    ax.axis('equal')
+    ax.grid('on', color='gray', linewidth=0.5)
+    # plt.show()
+    fig.canvas.draw_idle()
+    # return ax
+
+    # axcolor = 'lightgoldenrodyellow'
+    # axgaze = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+    #
+    # sgaze = Slider(axgaze, 'Gaze', 0.1, 30.0, valinit=0, valstep=0.5)
+    #
+    # def update(val):
+    #     eye = calcEye(sgaze.val)
+    #     fig.canvas.draw_idle()
+
+    # ax.margins(x=0)
 
 
 if __name__ == "__main__":
-    gaze_ = np.array([5., 0.])  # [Deg]
-    eye_ = calcEye(gaze_)
-    print('EBC:', eye_['EBC'], '\nLed: ', eye_['Led'], '\nGlint: ', eye_['glint'][0:8], '\nCcontou: ',
-          eye_['Ccontour'][0:8], '\nEyepiece: ', eye_['Eyepiece'], '\nlightfieldY: ', eye_['lightfieldY'])
-    plotEye(eye_)
+    fig, ax = plt.subplots(figsize=(13,6))
+    plt.subplots_adjust(left=0.2)
+    # gaze = np.array([7., 0.])  # [Deg]
+    # eye_2 = calcEye(gaze=gaze_1)
+    # ax_2 = plotEye(eye=eye_2)
+
+
+    axcolor = 'lightgoldenrodyellow'
+    axgaze = plt.axes([0.1, 0.1, 0.03, 0.8], facecolor=axcolor)
+    sgaze = Slider(axgaze, 'Gaze', -25., 25., valinit=0., valstep=0.5, orientation='vertical')
+
+    def update(val=5.):
+        gaze_val = sgaze.val
+        eye = calcEye(gaze=gaze_val)
+        plotEye(eye=eye)
+        # fig.canvas.draw_idle()
+
+    update()
+    sgaze.on_changed(update)
+
+    resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
+    button = Button(resetax, 'Reset', color=axcolor, hovercolor='0.975')
+
+
+    def reset(event):
+        ax.clear()
+        update()
+
+
+    button.on_clicked(reset)
+
+    plt.show()
+    # print('EBC:', eye_['EBC'], '\nLed: ', eye_['Led'], '\nGlint: ', eye_['glint'][0:8], '\nCcontou: ',
+    #       eye_['Ccontour'][0:8], '\nEyepiece: ', eye_['Eyepiece'], '\nlightfieldY: ', eye_['lightfieldY'])

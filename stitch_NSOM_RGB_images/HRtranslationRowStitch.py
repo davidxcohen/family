@@ -8,11 +8,10 @@ import matplotlib.pyplot as plt
 
 
 resize_factor = 9 / 10
-resolution_factor = 1
+resolution_factor = 0.5
 blur_factor = 9
 i = 0
-Path = "C:\\Users\\ayele\\Documents\\Ayelet\\Technion\\python\\my code\\images\\high_resolution\\"
-
+Path = "images/high_resolution/"
 
 class Stitcher:
     def __init__(self):
@@ -213,9 +212,9 @@ class Stitcher:
         # arrays
         kps = np.float32([kp.pt for kp in kps])
 
-        kp_img = self.drawKeypoints(image, kps)
-        cv2.imshow("kp %d" % i, kp_img)
-        cv2.waitKey(0)
+        # kp_img = self.drawKeypoints(image, kps)
+        # cv2.imshow("kp %d" % i, kp_img)
+        # cv2.waitKey(0)
 
         # return a tuple of keypoints and features
         return kps, features

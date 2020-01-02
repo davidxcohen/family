@@ -11,7 +11,7 @@ from scipy import signal
 
 # import PIL
 
-Path = "C:\\Users\\ayele\\Documents\\Ayelet\\Technion\\python\\my code\\images\\"
+Path = "/Users/ayele/Documents/Ayelet/Technion/python/my code/images/"
 tip_length = 250
 
 
@@ -20,13 +20,13 @@ def calc_mean(sample_num):
     j = 1
     images = []
 
-    print Path + "mean_s%d\\" % sample_num + "im (%d).png" % j
-    img = cv2.imread(Path + "mean_s%d\\" % sample_num + "im (%d).png" % j)
+    print Path + "mean_s%d/" % sample_num + "im (%d).png" % j
+    img = cv2.imread(Path + "mean_s%d/" % sample_num + "im (%d).png" % j)
     cropped = cut_tip(img)
     h = cropped.shape[0]
     w = cropped.shape[1]
     while img is not None:
-        img = cv2.imread(Path + "mean_s%d\\" % sample_num + "im (%d).png" % j)
+        img = cv2.imread(Path + "mean_s%d/" % sample_num + "im (%d).png" % j)
         if img is not None:
             cropped = cut_tip(img)
             images.append(cropped)
@@ -42,7 +42,7 @@ def calc_mean(sample_num):
     mean_img = np.uint8(mean)
     gray_mean = cv2.cvtColor(mean_img, cv2.COLOR_BGR2GRAY)
 
-    cv2.imwrite(Path + "mean_s%d\\mean_img.png" % sample_num, gray_mean)
+    cv2.imwrite(Path + "mean_s%d/mean_img.png" % sample_num, gray_mean)
     return None
 
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     #
 
     # highpass check
-    # img = cv2.imread(Path + "mean_s%d\\" % sample_num + "im (1).png")
+    # img = cv2.imread(Path + "mean_s%d/" % sample_num + "im (1).png")
     # highpass = highpass(cut_tip(img))
     # cv2.imshow("highpass", highpass)
     # cv2.waitKey(0)

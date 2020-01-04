@@ -177,14 +177,14 @@ def plotEye(eye):
     ax.plot(eye['Led'].T[0], eye['Led'].T[1], 'ro', linewidth=2, markersize=12)
     ax.plot(eye['Led'].T[0]+1.0, eye['Led'].T[1], 'rs', linewidth=2, markersize=12)
     ax.plot(eye['pupil'][0], eye['pupil'][1], 'ob', linewidth=2, markersize=12)
-    ax.text(eye['pupil'][0], eye['pupil'][1], 'P')
+    ax.text(eye['pupil'][0], eye['pupil'][1], 'P -> ', horizontalalignment='right', verticalalignment='center')
     ax.plot(eye['cornea'][0], eye['cornea'][1], 'ob', linewidth=2, markersize=12)
-    ax.text(eye['cornea'][0], eye['cornea'][1], 'C')
+    ax.text(eye['cornea'][0], eye['cornea'][1], 'C -> ', horizontalalignment='right', verticalalignment='center')
     ax.plot(eye['EBC'][0], eye['EBC'][1], 'ob', linewidth=2, markersize=12)
-    ax.text(eye['EBC'][0], eye['EBC'][1], 'EBC')
+    ax.text(eye['EBC'][0], eye['EBC'][1], 'EBC -> ', horizontalalignment='right', verticalalignment='center')
     ax.plot(eye['Cam'][0], eye['Cam'][1], '>m', linewidth=2, markersize=12)
     ax.plot(eye['Cam'][0]+1.0, eye['Cam'][1], 'sm', linewidth=2, markersize=12)
-    plt.text(eye['Cam'][0], eye['Cam'][1], 'Cam')
+    ax.text(eye['Cam'][0], eye['Cam'][1], 'Cam -> ', horizontalalignment='right', verticalalignment='center')
     for i in range(np.shape(eye['glint_beam'])[1]):
         ax.plot(eye['glint_beam'][:, i, 0], eye['glint_beam'][:, i, 1], ':r', linewidth=1, markersize=12)
     ax.axis('equal')
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(11, 6))
     plt.subplots_adjust(left=0.2)
 
-    # gaze GUI
+    # gaze adjustment update GUI
     axcolor = 'lightgoldenrodyellow'
     axgaze = plt.axes([0.1, 0.1, 0.03, 0.8], facecolor=axcolor)
     sgaze = Slider(axgaze, 'Gaze', -25., 25., valinit=0., valstep=0.5, orientation='vertical')

@@ -4,21 +4,16 @@ import numpy.matlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
 
-# plt.style.use('dark_background')
+plt.style.use('dark_background')
 # plt.style.use('seaborn-dark-palette')
 
+redrawMode = True
 
-def normalize2unit(input):
-    output = input**2
-    # output = input ./ repmat(sqrt(sum(input.^2)),3,1)
-    return output
-
-
-def normalize(v):
-    norm = numpy.linalg.norm(v)
-    if norm == 0:
-       return v
-    return v / norm
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    if numpy.linalg.norm(vector) == 0:
+        return vector
+    return vector / numpy.linalg.norm(vector)
 
 
 def normalize_rows(x: np.ndarray):
@@ -34,6 +29,41 @@ def normalize_rows(x: np.ndarray):
     return x/numpy.linalg.norm(x, ord=2, axis=1, keepdims=True)
 
 
+def angle_between(v1, v2, units='arcmin'):
+    """ Returns the angle in radians between vectors 'v1' and 'v2', where 'v1' and 'v2' could be a single vectors, each,
+        or equal number of vector rows, or a single vector in one side and rows of vectors in the other side ::
+            >>> angle_between((1, 0, 0), (0, 1, 0), units='radian')
+            1.5707963267948966
+            >>> angle_between((1, 0, 0), (1, 0, 0), units='radian')
+            0.0
+            >>> angle_between((1, 0, 0), (-1, 0, 0), units='radian')
+            3.141592653589793
+            >>> angle_between([[1, 0, 0],[1, 0, 0]], [[-1, 0, 0],[0, 1, 0]], units='radian')
+            [3.14159265, 1.57079633]
+            >>> angle_between([1, 0, 0], [[-1, 0, 0],[0, 1, 0]], units='radian')
+            [3.14159265, 1.57079633]
+    """
+    unit = 1.
+    if units == 'radian':
+        unit = 1.
+    if units == 'degree':
+        unit = 180. / np.pi
+    if units == 'arcmin':
+        unit = 180. / np.pi * 60.
+
+    if (len(np.shape(v1)) == 1) and (len(np.shape(v2)) == 2):
+        v1 = numpy.matlib.repmat(v1, np.shape(v2)[0], 1)
+    if (len(np.shape(v1)) == 2) and (len(np.shape(v2)) == 1):
+        v2 = numpy.matlib.repmat(v2, np.shape(v1)[0], 1)
+    if (len(np.shape(v1)) == 1) and (len(np.shape(v2)) == 1):
+        v1_u = unit_vector(v1)
+        v2_u = unit_vector(v2)
+        return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * unit
+    if (len(np.shape(v1)) == 2) or (len(np.shape(v2)) == 2):
+        dot = np.einsum('ijk,ijk->ij', [v1, v1, v2], [v2, v1, v2])
+        return np.arccos(dot[0, :] / (np.sqrt(dot[1, :]) * np.sqrt(dot[2, :])))
+
+
 def calcEye(gaze=5.):
     # Eye Constants
     gazeRAD = [np.radians(gaze), 0]
@@ -43,14 +73,20 @@ def calcEye(gaze=5.):
     CorneaRadius = 8.0  # [mm]
     IrisRadius = 13.0 / 2  # [mm]
     PupilRadius = 2.0  # [mm]
+    coneOfSphericalCornea = 70.  # [deg]
 
     # Simulation conditions
-    EBC = np.array([0, 0, 0])  # [mm] EBC
+    # EBC
+    EBC = np.array([0., 0., 0.])  # [mm] EBC
+
+    # Pupil
     P = EBC + (EBC2CorneaApex - P2CorneaApex) * np.array([np.cos(gazeRAD[0]), np.sin(gazeRAD[0]), 0])
     P0 = EBC + (EBC2CorneaApex - P2CorneaApex) * np.array([np.cos(0), np.sin(0), 0])
                                                         # Optics assume to zero at nominal conditions (@ gazeRAD = 0)
+    # Cornea
     C = EBC + (EBC2CorneaApex - CorneaRadius) * np.array([np.cos(gazeRAD[0]), np.sin(gazeRAD[0]), 0])
 
+    # Eye dictionary
     eye = {'EBC': EBC,
            'Gaze': np.array([gazeRAD, 0]),
            'pupil': P,
@@ -64,32 +100,41 @@ def calcEye(gaze=5.):
            'CVG': np.array([[30, 17, 0], [30, -17, 0]]),  # [mm] converge point for the lightfield
            }
 
-    optic_resolution = 70. / 400. * 60.  # arcmin/pixel
+    # Optical setup
+    camera_resolution = 400.  # [pixels]
+    camera_FoV = 70.   # [deg]
+    optic_resolution = camera_FoV / camera_resolution * 60.  # [arcmin/pixel]
 
-    # glint
+    # glint - 3D location
     C2Led = normalize_rows(eye['Led'] - C)  # cornea to led unit vector
-    C2Cam = normalize(eye['Cam'] - C)  # cornea to Camera unit vector
+    C2Cam = unit_vector(eye['Cam'] - C)  # cornea to Camera unit vector
     C2Cam = numpy.matlib.repmat(C2Cam, np.shape(C2Led)[0], 1)
-    # halfAng= np.zeros(np.shape(C2Led))  #
-    # for ii in range(np.shape(C2Led)[1]):  # Half angle (glint) calculations (ii index for x, y, z)
-    halfAng = np.mean([C2Led, C2Cam], axis=0)  # for unit vectors half angle is mean
+    halfAng = np.mean([C2Led, C2Cam], axis=0)  # for unit vectors half angle is mean between camera and led
+    
     eye['glint'] = C + CorneaRadius * normalize_rows(halfAng)  # the glint point on cornea
 
-    #  contours
-    t = np.radians(np.linspace(43, 317, 274)) + gazeRAD[0]  # For EBC
+    #  EBC contour
+    t = np.radians(np.linspace(43, 317, 200)) + gazeRAD[0]  # For EBC
     eye['EBcontour'] = numpy.matlib.repmat(EBC[:2], len(t), 1) + EBradius * np.array([np.cos(t), np.sin(t)]).T
-    t = np.radians(np.linspace(55, 125, 7)) + gazeRAD[0] - np.radians(90)  # For Cornea
+
+    # Cornea contours
+    t = np.radians(np.linspace(-coneOfSphericalCornea / 2, coneOfSphericalCornea / 2, 50)) + gazeRAD[0]  # For Cornea
     eye['Ccontour'] = numpy.matlib.repmat(C[:2], len(t), 1) + CorneaRadius * np.array([np.cos(t), np.sin(t)]).T
     t = np.radians(np.linspace(0, 360, 361)) + gazeRAD[0] - np.radians(90)  # For Modeled Cornea
     eye['Ccontour_model'] = numpy.matlib.repmat(C[:2], len(t), 1) + CorneaRadius * np.array([np.cos(t), np.sin(t)]).T
+
+    # Pupil lines
     eye['Pcontour'] = np.array([
                     (P[:2] + PupilRadius * np.array([np.cos(gazeRAD[0] + np.radians(90)), np.sin(gazeRAD[0] + np.radians(90))])),
                     (P[:2] + IrisRadius * np.array([np.cos(gazeRAD[0] + np.radians(90)), np.sin(gazeRAD[0] + np.radians(90))])),
                     (P[:2] - PupilRadius * np.array([np.cos(gazeRAD[0] + np.radians(90)), np.sin(gazeRAD[0] + np.radians(90))])),
                     (P[:2] - IrisRadius * np.array([np.cos(gazeRAD[0] + np.radians(90)), np.sin(gazeRAD[0] + np.radians(90))]))])
     Cam = numpy.matlib.repmat(eye['Cam'], np.shape(C2Led)[0], 1)
-    # eye['glint_beam'] = np.concatenate((Cam, eye['glint'], eye['Led']))
+
+    # Glint beams
     eye['glint_beam'] = np.array([Cam, eye['glint'], eye['Led']])
+
+    # Limbus lines
     eye['limbus'] = np.array([eye['EBcontour'][-1], eye['Ccontour'][0], eye['Ccontour'][-1], eye['EBcontour'][0]])
 
     # Lightfield beams
@@ -107,20 +152,16 @@ def calcEye(gaze=5.):
                                                       (1+contLine) * eye['CVG'][ii, 0] - contLine * EPpoint[jj, 0]])
             eye['lightfieldY'][ii, jj, :] = np.array([EPpoint[jj, 1],
                                                       (1+contLine) * eye['CVG'][ii, 1] - contLine * EPpoint[jj, 1]])
-    # print('lightfieldX: ', eye['lightfieldX'])
 
-    # %% pixel
-    # eye.Ppixel = get_e1_e2_angle_arcmin(P0'-eye.Cam', P'-eye.Cam') / optic_resolution;
-    # eye.Gpixel(1) = get_e1_e2_angle_arcmin(P0'-eye.Cam', eye.glint(:,1)-eye.Cam') / optic_resolution;
-    # eye.Gpixel(2) = get_e1_e2_angle_arcmin(P0'-eye.Cam', eye.glint(:,2)-eye.Cam') / optic_resolution;
-    # eye.Gpixel(3) = get_e1_e2_angle_arcmin(P0'-eye.Cam', eye.glint(:,3)-eye.Cam') / optic_resolution;
+    # Glint pixel on camera (measured from y-axis - could be more than resolution)
+    # eye.Ppixel = angle_between(P0'-eye.Cam', P'-eye.Cam') / optic_resolution;
+    # eye.Gpixel(1) = angle_between(P0'-eye.Cam', eye.glint(:,1)-eye.Cam') / optic_resolution;
+    # eye.Gpixel(2) = angle_between(P0'-eye.Cam', eye.glint(:,2)-eye.Cam') / optic_resolution;
+    # eye.Gpixel(3) = angle_between(P0'-eye.Cam', eye.glint(:,3)-eye.Cam') / optic_resolution;
     return eye
 
 
 def plotEye(eye):
-    # fig, ax = plt.subplots()
-    # plt.subplots_adjust(bottom=0.25)  # leave space for the slider
-    # plt.figure()
     ax.plot(eye['Ccontour'].T[0], eye['Ccontour'].T[1], 'b', linewidth=2, markersize=12)
     ax.plot(eye['Ccontour_model'].T[0], eye['Ccontour_model'].T[1], ':b', linewidth=2, markersize=12)  # continue the
                                                                                     # cornea with dotted line
@@ -147,53 +188,43 @@ def plotEye(eye):
         ax.plot(eye['glint_beam'][:, i, 0], eye['glint_beam'][:, i, 1], ':r', linewidth=1, markersize=12)
     ax.axis('equal')
     ax.grid('on', color='gray', linewidth=0.5)
-    # plt.show()
     fig.canvas.draw_idle()
-    # return ax
 
-    # axcolor = 'lightgoldenrodyellow'
-    # axgaze = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
-    #
-    # sgaze = Slider(axgaze, 'Gaze', 0.1, 30.0, valinit=0, valstep=0.5)
-    #
-    # def update(val):
-    #     eye = calcEye(sgaze.val)
-    #     fig.canvas.draw_idle()
 
-    # ax.margins(x=0)
+def update(val=5.):
+    global redrawMode
+    gaze_val = sgaze.val
+    eye = calcEye(gaze=gaze_val)
+    if redrawMode:
+        ax.clear()
+    plotEye(eye=eye)
+
+
+def mode(event):
+    global redrawMode
+    if not redrawMode:
+        ax.clear()
+        redrawMode = True
+    elif redrawMode:
+        redrawMode = False
+    update()
 
 
 if __name__ == "__main__":
-    fig, ax = plt.subplots(figsize=(13,6))
+    fig, ax = plt.subplots(figsize=(11, 6))
     plt.subplots_adjust(left=0.2)
-    # gaze = np.array([7., 0.])  # [Deg]
-    # eye_2 = calcEye(gaze=gaze_1)
-    # ax_2 = plotEye(eye=eye_2)
 
-
+    # gaze GUI
     axcolor = 'lightgoldenrodyellow'
     axgaze = plt.axes([0.1, 0.1, 0.03, 0.8], facecolor=axcolor)
     sgaze = Slider(axgaze, 'Gaze', -25., 25., valinit=0., valstep=0.5, orientation='vertical')
-
-    def update(val=5.):
-        gaze_val = sgaze.val
-        eye = calcEye(gaze=gaze_val)
-        plotEye(eye=eye)
-        # fig.canvas.draw_idle()
-
     update()
     sgaze.on_changed(update)
 
-    resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
-    button = Button(resetax, 'Reset', color=axcolor, hovercolor='0.975')
-
-
-    def reset(event):
-        ax.clear()
-        update()
-
-
-    button.on_clicked(reset)
+    # redraw mode GUI
+    modeax = plt.axes([0.8, 0.025, 0.1, 0.04])
+    button = Button(modeax, 'Mode', color=axcolor, hovercolor='0.275')
+    button.on_clicked(mode)
 
     plt.show()
     # print('EBC:', eye_['EBC'], '\nLed: ', eye_['Led'], '\nGlint: ', eye_['glint'][0:8], '\nCcontou: ',

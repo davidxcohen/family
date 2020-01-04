@@ -105,12 +105,14 @@ def calcEye(gaze=5.):
     camera_FoV = 70.   # [deg]
     optic_resolution = camera_FoV / camera_resolution * 60.  # [arcmin/pixel]
 
-    # glint - 3D location
+    # glint points in 3D
     C2Led = normalize_rows(eye['Led'] - C)  # cornea to led unit vector
     C2Cam = unit_vector(eye['Cam'] - C)  # cornea to Camera unit vector
     C2Cam = numpy.matlib.repmat(C2Cam, np.shape(C2Led)[0], 1)
     halfAng = np.mean([C2Led, C2Cam], axis=0)  # for unit vectors half angle is mean between camera and led
-    
+
+    #     # Invalidation of glints outside the spherical cornea model (i.e. on limbus)
+    halfAng[angle_between(P-C, halfAng, 'degree') * 180 / np.pi > coneOfSphericalCornea / 2.] = [np.nan, np.nan, np.nan]
     eye['glint'] = C + CorneaRadius * normalize_rows(halfAng)  # the glint point on cornea
 
     #  EBC contour
@@ -147,7 +149,6 @@ def calcEye(gaze=5.):
     eye['lightfieldY'] = np.zeros([np.shape(eye['CVG'][1])[0] - 1, len(n), 2])
     for ii in range(np.shape(eye['CVG'][0])[0] - 1):  # convergence points
         for jj in range(len(n)):  # Lightfield beams
-            # print('ii,jj: ', ii, jj)
             eye['lightfieldX'][ii, jj, :] = np.array([EPpoint[jj, 0],
                                                       (1+contLine) * eye['CVG'][ii, 0] - contLine * EPpoint[jj, 0]])
             eye['lightfieldY'][ii, jj, :] = np.array([EPpoint[jj, 1],

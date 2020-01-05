@@ -4,10 +4,8 @@ import numpy.matlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
 
-plt.style.use('dark_background')
-# plt.style.use('seaborn-dark-palette')
-
 redrawMode = True
+
 
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
@@ -49,7 +47,7 @@ def angle_between(v1, v2, units='arcmin'):
     if units == 'degree':
         unit = 180. / np.pi
     if units == 'arcmin':
-        unit = 180. / np.pi * 60.
+        unit = 60. * 180. / np.pi
 
     if (len(np.shape(v1)) == 1) and (len(np.shape(v2)) == 2):
         v1 = numpy.matlib.repmat(v1, np.shape(v2)[0], 1)
@@ -61,12 +59,11 @@ def angle_between(v1, v2, units='arcmin'):
         return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * unit
     if (len(np.shape(v1)) == 2) or (len(np.shape(v2)) == 2):
         dot = np.einsum('ijk,ijk->ij', [v1, v1, v2], [v2, v1, v2])
-        return np.arccos(dot[0, :] / (np.sqrt(dot[1, :]) * np.sqrt(dot[2, :])))
+        return np.arccos(dot[0, :] / (np.sqrt(dot[1, :]) * np.sqrt(dot[2, :]))) * unit
 
 
 def calcEye(gaze=5.):
     # Eye Constants
-    gazeRAD = [np.radians(gaze), 0]
     EBC2CorneaApex = 13.5  # [mm]
     P2CorneaApex = 3.5  # [mm]
     EBradius = 12.0  # [mm]
@@ -74,8 +71,11 @@ def calcEye(gaze=5.):
     IrisRadius = 13.0 / 2  # [mm]
     PupilRadius = 2.0  # [mm]
     coneOfSphericalCornea = 70.  # [deg]
+    coneOfNonSphericalEBC = 86.  # [deg]
 
     # Simulation conditions
+    gazeRAD = [np.radians(gaze), 0]
+
     # EBC
     EBC = np.array([0., 0., 0.])  # [mm] EBC
 
@@ -91,11 +91,13 @@ def calcEye(gaze=5.):
            'Gaze': np.array([gazeRAD, 0]),
            'pupil': P,
            'cornea': C,
-           'Led': np.array([[27, 0, 0],
-                            [27, 10, 0],
+           'Led': np.array([[27, 10, 0],
                             [27, 5, 0],
+                            [27, 0, 0],
+                            [27, -5, 0],
                             [27, -10, 0]]),
            'Cam': np.array([27, -15, 0]),
+           # 'Cam': np.array([27, -7, 0]),
            'Eyepiece': np.array([[30, 17, 0], [30, -17, 0]]),  # [mm] Eyepiece corners
            'CVG': np.array([[30, 17, 0], [30, -17, 0]]),  # [mm] converge point for the lightfield
            }
@@ -111,12 +113,12 @@ def calcEye(gaze=5.):
     C2Cam = numpy.matlib.repmat(C2Cam, np.shape(C2Led)[0], 1)
     halfAng = np.mean([C2Led, C2Cam], axis=0)  # for unit vectors half angle is mean between camera and led
 
-    #     # Invalidation of glints outside the spherical cornea model (i.e. on limbus)
-    halfAng[angle_between(P-C, halfAng, 'degree') * 180 / np.pi > coneOfSphericalCornea / 2.] = [np.nan, np.nan, np.nan]
+    # Invalidation of glints outside the spherical cornea model (i.e. on limbus)
+    halfAng[angle_between(P-C, halfAng, 'degree') > coneOfSphericalCornea / 2.] = [np.nan, np.nan, np.nan]
     eye['glint'] = C + CorneaRadius * normalize_rows(halfAng)  # the glint point on cornea
 
     #  EBC contour
-    t = np.radians(np.linspace(43, 317, 200)) + gazeRAD[0]  # For EBC
+    t = np.radians(np.linspace(coneOfNonSphericalEBC / 2, 360. - coneOfNonSphericalEBC / 2, 200)) + gazeRAD[0]  # For EBC
     eye['EBcontour'] = numpy.matlib.repmat(EBC[:2], len(t), 1) + EBradius * np.array([np.cos(t), np.sin(t)]).T
 
     # Cornea contours
@@ -155,8 +157,9 @@ def calcEye(gaze=5.):
                                                       (1+contLine) * eye['CVG'][ii, 1] - contLine * EPpoint[jj, 1]])
 
     # Glint pixel on camera (measured from y-axis - could be more than resolution)
-    # eye.Ppixel = angle_between(P0'-eye.Cam', P'-eye.Cam') / optic_resolution;
-    # eye.Gpixel(1) = angle_between(P0'-eye.Cam', eye.glint(:,1)-eye.Cam') / optic_resolution;
+    eye['Ppixel'] = angle_between(P0 - eye['Cam'], P - eye['Cam']) / optic_resolution
+    eye['Gpixel'] = angle_between(P0 - eye['Cam'], eye['glint'] - eye['Cam'],
+                                  units='arcmin') / optic_resolution
     # eye.Gpixel(2) = angle_between(P0'-eye.Cam', eye.glint(:,2)-eye.Cam') / optic_resolution;
     # eye.Gpixel(3) = angle_between(P0'-eye.Cam', eye.glint(:,3)-eye.Cam') / optic_resolution;
     return eye
@@ -182,12 +185,21 @@ def plotEye(eye):
     ax.text(eye['cornea'][0], eye['cornea'][1], 'C -> ', horizontalalignment='right', verticalalignment='center')
     ax.plot(eye['EBC'][0], eye['EBC'][1], 'ob', linewidth=2, markersize=12)
     ax.text(eye['EBC'][0], eye['EBC'][1], 'EBC -> ', horizontalalignment='right', verticalalignment='center')
-    ax.plot(eye['Cam'][0], eye['Cam'][1], '>m', linewidth=2, markersize=12)
-    ax.plot(eye['Cam'][0]+1.0, eye['Cam'][1], 'sm', linewidth=2, markersize=12)
-    ax.text(eye['Cam'][0], eye['Cam'][1], 'Cam -> ', horizontalalignment='right', verticalalignment='center')
+    ax.plot(eye['Cam'][0], eye['Cam'][1], '>m', linewidth=2, markersize=15)
+    ax.plot(eye['Cam'][0]+1.0, eye['Cam'][1], 'sm', linewidth=2, markersize=15)
+    ax.text(eye['Cam'][0], eye['Cam'][1], 'Cam ->   ', horizontalalignment='right', verticalalignment='center')
     for i in range(np.shape(eye['glint_beam'])[1]):
         ax.plot(eye['glint_beam'][:, i, 0], eye['glint_beam'][:, i, 1], ':r', linewidth=1, markersize=12)
+    str1=''
+    for i in range(len(eye['Gpixel'])):
+        str1 = str1 + '% 3.1f  '%(eye['Gpixel'][i])
+    ax.text(eye['EBC'][0] - 13.5, eye['EBC'][1] + 15.5, 'Glint pixel: ' + str1)
+    ax.text(eye['EBC'][0] - 13.5, eye['EBC'][1] + 13.5, 'Pupil pixel: ' + '% 3.1f'%(eye['Ppixel']))
     ax.axis('equal')
+    ax.set_xlim((eye['EBC'][0] - 15., eye['EBC'][0] + 45.))
+    ax.set_ylim((eye['EBC'][1] - 17., eye['EBC'][1] + 17.))
+    ax.set_xticks(np.arange(int((eye['EBC'][0] - 15.)/5)*5, int((eye['EBC'][0] + 45.)/5)*5, step=5.))
+    ax.set_yticks(np.arange(int((eye['EBC'][1] - 17.)/5)*5, int((eye['EBC'][1] + 17.)/5)*5, step=5.))
     ax.grid('on', color='gray', linewidth=0.5)
     fig.canvas.draw_idle()
 
@@ -211,7 +223,8 @@ def mode(event):
     update()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    plt.style.use('dark_background')
     fig, ax = plt.subplots(figsize=(11, 6))
     plt.subplots_adjust(left=0.2)
 

@@ -14,7 +14,7 @@ def unit_vector(vector):
     return vector / numpy.linalg.norm(vector)
 
 
-def normalize_rows(x: np.ndarray):
+def normalize_rows(x):
     """
     function that normalizes each row of the matrix x to have unit length.
 

@@ -184,7 +184,7 @@ def plotEye(eye):
     ax.plot(eye['cornea'][0], eye['cornea'][1], 'ob', linewidth=2, markersize=12)
     ax.text(eye['cornea'][0], eye['cornea'][1], 'C -> ', horizontalalignment='right', verticalalignment='center')
     ax.plot(eye['EBC'][0], eye['EBC'][1], 'ob', linewidth=2, markersize=12)
-    ax.text(eye['EBC'][0], eye['EBC'][1], 'EBC -> ', horizontalalignment='right', verticalalignment='center')
+    ax.text(eye['EBC'][0], eye['EBC'][1], 'Eye Rotation -> ', horizontalalignment='right', verticalalignment='center')
     ax.plot(eye['Cam'][0], eye['Cam'][1], '>m', linewidth=2, markersize=15)
     ax.plot(eye['Cam'][0]+1.0, eye['Cam'][1], 'sm', linewidth=2, markersize=15)
     ax.text(eye['Cam'][0], eye['Cam'][1], 'Cam ->   ', horizontalalignment='right', verticalalignment='center')
